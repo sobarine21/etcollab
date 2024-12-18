@@ -2,18 +2,19 @@ import streamlit as st
 from supabase import create_client, Client
 import google.generativeai as genai
 
+# Streamlit app configuration
+st.set_page_config(page_title="CollabSphere", layout="wide")
+st.title("\U0001F91D CollabSphere: Real-Time Collaboration Platform")
 
-# Configure Supabase URL and Key
-SUPABASE_URL = "your_supabase_url_here"
-SUPABASE_KEY = "your_supabase_key_here"
+# Fetch Supabase URL and Key from Streamlit's secrets
+SUPABASE_URL = st.secrets["supabase"]["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["supabase"]["SUPABASE_KEY"]
+
+# Create a Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Configure the Gemini AI key
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-
-# Streamlit App Configuration
-st.set_page_config(page_title="CollabSphere", layout="wide")
-st.title("\U0001F91D CollabSphere: Real-Time Collaboration Platform")
+genai.configure(api_key=st.secrets["google"]["GOOGLE_API_KEY"])
 
 # Real-time fetch of active workspaces from Supabase
 def fetch_workspaces():
