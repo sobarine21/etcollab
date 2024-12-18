@@ -12,7 +12,7 @@ st.title("\U0001F91D CollabSphere: Real-Time Collaboration Platform")
 SUPABASE_URL = st.secrets["supabase"]["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["supabase"]["SUPABASE_KEY"]
 
-# Create a Supabase client
+# Create a Supabase client (synchronous version for normal operations)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Configure the Gemini AI key
@@ -40,12 +40,17 @@ def create_workspace(workspace_name):
 # Asynchronous listener function for Supabase real-time updates
 async def listen_to_tasks():
     from supabase import create_client
-    async with create_client(SUPABASE_URL, SUPABASE_KEY) as client:
-        channel = client.realtime.channel("tasks")
-        await channel.subscribe()
+    from supabase.realtime import RealtimeClient
 
-        # Listen for real-time insertions (for example, new tasks)
-        await channel.on("INSERT", lambda payload: st.rerun())  # Correct usage
+    # Use the asynchronous RealtimeClient
+    client = RealtimeClient(SUPABASE_URL, SUPABASE_KEY)
+
+    # Create the real-time subscription
+    channel = client.channel("tasks")
+    await channel.subscribe()
+
+    # Listen for real-time insertions (for example, new tasks)
+    await channel.on("INSERT", lambda payload: st.experimental_rerun())  # Correct usage of st.experimental_rerun()
 
 # Function to start the listener in a separate thread
 def start_listener():
@@ -78,7 +83,7 @@ if workspace_list:
         if col2.button(f"Join Workspace: {ws}", key=ws):
             st.session_state.current_workspace = ws
             st.success(f"Joined '{ws}' workspace.")
-            st.rerun()  # Re-render page to reflect changes
+            st.experimental_rerun()  # Re-render page to reflect changes
 else:
     st.info("No active workspaces. Create one to start collaborating.")
 
