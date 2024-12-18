@@ -7,12 +7,18 @@ from datetime import datetime
 import json
 
 # Load Firebase credentials from Streamlit secrets
-firebase_credentials = json.loads(st.secrets["firebase_credentials"])
+# Ensure that the firebase_credentials key is added in secrets.toml or Streamlit Cloud secrets
+try:
+    firebase_credentials = json.loads(st.secrets["firebase_credentials"])
 
-# Initialize Firebase
-cred = credentials.Certificate(firebase_credentials)
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+    # Initialize Firebase using the credentials
+    cred = credentials.Certificate(firebase_credentials)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+
+except KeyError:
+    st.error("Firebase credentials not found in Streamlit secrets. Please add them to the secrets.toml or Streamlit Cloud secrets.")
+    st.stop()
 
 st.title("CollabSphere")
 
@@ -23,7 +29,7 @@ def login():
     if st.button("Login"):
         try:
             user = auth.get_user_by_email(email)
-            st.success("Logged in as {}".format(user.email))
+            st.success(f"Logged in as {user.email}")
         except:
             st.error("Invalid credentials")
 
@@ -36,13 +42,15 @@ def register():
                 email=email,
                 password=password
             )
-            st.success("Registered as {}".format(user.email))
+            st.success(f"Registered as {user.email}")
         except:
             st.error("Registration failed")
 
+# Sidebar menu
 st.sidebar.title("Menu")
 page = st.sidebar.selectbox("Choose a page", ["Login", "Register", "Dashboard"])
 
+# Page navigation
 if page == "Login":
     login()
 elif page == "Register":
@@ -79,7 +87,7 @@ elif page == "Dashboard":
     # Gamification
     st.subheader("Gamification")
     points = 100
-    st.write("You have {} points.".format(points))
+    st.write(f"You have {points} points.")
 
     # Integrations
     st.subheader("Integrations")
