@@ -1,155 +1,83 @@
 import streamlit as st
-import google.generativeai as genai
+import firebase_admin
+from firebase_admin import credentials, firestore, auth
+import pandas as pd
+import numpy as np
 from datetime import datetime
-import random
-import time
 
-# Configure the Gemini AI key
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+# Initialize Firebase
+cred = credentials.Certificate("path/to/serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-# Streamlit App Configuration
-st.set_page_config(page_title="CollabSphere", layout="wide")
-st.title("\U0001F91D CollabSphere: Real-time Collaboration Platform")
+st.title("CollabSphere")
 
-# Anonymous User Login
-username = st.text_input("Enter a pseudonym to join anonymously:", placeholder="E.g., CreativeSoul123")
-if not username:
-    st.warning("Please enter a pseudonym to proceed.")
-    st.stop()
+# Authentication
+def login():
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        try:
+            user = auth.get_user_by_email(email)
+            st.success("Logged in as {}".format(user.email))
+        except:
+            st.error("Invalid credentials")
 
-st.success(f"Welcome, {username}! Ready to collaborate?")
+def register():
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Register"):
+        try:
+            user = auth.create_user(
+                email=email,
+                password=password
+            )
+            st.success("Registered as {}".format(user.email))
+        except:
+            st.error("Registration failed")
 
-# Workspace Selection
-workspace = st.text_input("Enter or create a workspace name:", placeholder="E.g., TeamAlpha")
-if not workspace:
-    st.warning("Please provide a workspace name.")
-    st.stop()
+st.sidebar.title("Menu")
+page = st.sidebar.selectbox("Choose a page", ["Login", "Register", "Dashboard"])
 
-st.info(f"You are now in the workspace: {workspace}")
+if page == "Login":
+    login()
+elif page == "Register":
+    register()
+elif page == "Dashboard":
+    st.write("Welcome to the Dashboard")
 
-# Sidebar for AI Tools
-st.sidebar.header("\U0001F916 Gemini AI Assistant")
-ai_tool = st.sidebar.selectbox("Choose an AI Tool:", [
-    "Brainstorm Ideas", "Summarize Text", "Task Prioritization", "Custom Prompt"
-])
-
-
-# AI Interaction Logic
-def handle_ai_requests(tool_name):
-    if tool_name == "Brainstorm Ideas":
-        prompt = st.sidebar.text_area("Describe what you need ideas for:", placeholder="E.g., Strategies for product launch")
-        if st.sidebar.button("Generate Ideas"):
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            st.sidebar.write(response.text)
-    elif tool_name == "Summarize Text":
-        text_to_summarize = st.sidebar.text_area("Enter text to summarize:")
-        if st.sidebar.button("Summarize"):
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(f"Summarize: {text_to_summarize}")
-            st.sidebar.write(response.text)
-    elif tool_name == "Task Prioritization":
-        tasks = st.sidebar.text_area("Enter tasks (comma-separated):")
-        if st.sidebar.button("Prioritize Tasks"):
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(f"Prioritize these tasks: {tasks}")
-            st.sidebar.write(response.text)
-    elif tool_name == "Custom Prompt":
-        custom_prompt = st.sidebar.text_area("Enter custom prompt:")
-        if st.sidebar.button("Submit"):
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(custom_prompt)
-            st.sidebar.write(response.text)
-
-
-handle_ai_requests(ai_tool)
-
-# Main Collaboration Workspace
-st.header("\U0001F4C2 Collaboration Board")
-
-
-# Shared Notes Section
-st.subheader("\U0001F4DD Shared Notes")
-if "notes" not in st.session_state:
-    st.session_state.notes = ""
-
-# Shared Notes real-time sync simulation
-st.session_state.notes = st.text_area(
-    "Collaborative Notes:", value=st.session_state.notes, height=200, key="shared_notes"
-)
-
-# Task Management Section
-st.subheader("\U00002705 Task Management")
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-task_input = st.text_input("Add a new task:", placeholder="E.g., Complete proposal")
-if st.button("Add Task"):
-    if task_input:
-        st.session_state.tasks.append(
-            {"task": task_input, "status": "Pending", "assigned": username}
-        )
-        st.success("Task added!")
-
-for idx, task in enumerate(st.session_state.tasks):
-    col1, col2, col3 = st.columns([6, 2, 2])
-    col1.write(f"{task['task']} (Assigned: {task['assigned']})")
-    col2.write(task["status"])
-    if col3.button("Mark Complete", key=f"complete_{idx}"):
-        st.session_state.tasks[idx]["status"] = "Completed"
-        st.experimental_rerun()
-
-# Gamification: Leaderboard Section
-st.subheader("\U0001F3C6 Leaderboard")
-if "leaderboard" not in st.session_state:
-    st.session_state.leaderboard = {}
-
-# Simulate leaderboard points dynamically
-def update_leaderboard(username, points):
-    if username in st.session_state.leaderboard:
-        st.session_state.leaderboard[username] += points
+    # Real-time Collaboration
+    st.subheader("Real-time Collaboration")
+    doc_ref = db.collection("collabs").document("example")
+    doc = doc_ref.get()
+    if doc.exists:
+        data = doc.to_dict()
+        st.write(data)
     else:
-        st.session_state.leaderboard[username] = points
+        st.write("No collaboration data available.")
 
+    # Task Management
+    st.subheader("Task Management")
+    tasks = ["Task 1", "Task 2", "Task 3"]
+    for task in tasks:
+        st.checkbox(task)
 
-update_leaderboard(username, random.randint(1, 5))  # Simulate points gain
-leaderboard_sorted = sorted(st.session_state.leaderboard.items(), key=lambda x: x[1], reverse=True)
+    # Knowledge Sharing
+    st.subheader("Knowledge Sharing")
+    if st.button("Share Knowledge"):
+        st.write("Sharing knowledge...")
 
-for rank, (user, points) in enumerate(leaderboard_sorted, start=1):
-    st.write(f"{rank}. {user}: {points} points")
+    # AI-enhanced Productivity Tools
+    st.subheader("AI-enhanced Productivity Tools")
+    if st.button("Enhance Productivity"):
+        st.write("Enhancing productivity with AI...")
 
+    # Gamification
+    st.subheader("Gamification")
+    points = 100
+    st.write("You have {} points.".format(points))
 
-# File Sharing Section
-st.subheader("\U0001F4C4 File Sharing")
-uploaded_files = st.file_uploader(
-    "Share files with your team here:", type=["pdf", "txt", "docx"], accept_multiple_files=True
-)
-if uploaded_files:
-    for file in uploaded_files:
-        st.success(f"Shared file: {file.name}")
-
-
-# Real-time Chat Simulation
-st.subheader("\U0001F4AC Real-time Chat")
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-with st.container():
-    chat_box = st.empty()
-    user_message = st.text_input(
-        "Type your message:", placeholder="Type and press Enter"
-    )
-    if st.button("Send Message"):
-        if user_message:
-            st.session_state.messages.append({"username": username, "message": user_message})
-            st.experimental_rerun()
-
-# Render messages dynamically
-if st.session_state.messages:
-    for msg in st.session_state.messages:
-        st.info(f"{msg['username']}: {msg['message']}")
-
-
-# Footer Section
-st.write("\n---\n")
-st.write("\U0001F4A1 Powered by Gemini AI & built with Streamlit")
+    # Integrations
+    st.subheader("Integrations")
+    if st.button("Integrate"):
+        st.write("Integrating with external services...")
