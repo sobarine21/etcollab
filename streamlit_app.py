@@ -19,8 +19,11 @@ genai.configure(api_key=st.secrets["google"]["GOOGLE_API_KEY"])
 # Ensure the workspaces table has a primary key and exists
 def ensure_workspace_table():
     try:
-        # Check if the 'workspaces' table exists
-        response = supabase.from_("information_schema.tables").select("*").eq("table_name", "workspaces").execute()
+        # Check if the 'workspaces' table exists in the 'information_schema.tables'
+        response = supabase.rpc('sql', {'query': """
+            SELECT * FROM information_schema.tables 
+            WHERE table_name = 'workspaces';
+        """}).execute()
         
         if not response.data:
             # If table doesn't exist, create it
@@ -34,7 +37,10 @@ def ensure_workspace_table():
             st.success("Created 'workspaces' table.")
         else:
             # If table exists, ensure primary key is set (if not)
-            response = supabase.from_("information_schema.columns").select("*").eq("table_name", "workspaces").eq("column_name", "id").execute()
+            response = supabase.rpc('sql', {'query': """
+                SELECT * FROM information_schema.columns
+                WHERE table_name = 'workspaces' AND column_name = 'id';
+            """}).execute()
             
             if not response.data:
                 alter_table_sql = """
@@ -93,7 +99,7 @@ if workspace_list:
         if col2.button(f"Join Workspace: {ws}", key=ws):
             st.session_state.current_workspace = ws
             st.success(f"Joined '{ws}' workspace.")
-            st.experimental_rerun()
+            st.rerun()  # Use st.rerun() instead of st.experimental_rerun()
 else:
     st.info("No active workspaces. Create one to start collaborating.")
 
