@@ -1,8 +1,12 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+from supabase import create_client, Client
 import google.generativeai as genai
-import numpy as np
 
+
+# Configure Supabase URL and Key
+SUPABASE_URL = "your_supabase_url_here"
+SUPABASE_KEY = "your_supabase_key_here"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Configure the Gemini AI key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -11,34 +15,53 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 st.set_page_config(page_title="CollabSphere", layout="wide")
 st.title("\U0001F91D CollabSphere: Real-Time Collaboration Platform")
 
-# Workspace Management
-if "workspaces" not in st.session_state:
-    st.session_state.workspaces = []  # Store workspace names
+# Real-time fetch of active workspaces from Supabase
+def fetch_workspaces():
+    try:
+        # Query the workspace list from Supabase
+        response = supabase.table("workspaces").select("name").execute()
+        return [row["name"] for row in response.data]
+    except Exception as e:
+        st.error(f"Failed to fetch workspaces: {e}")
+        return []
 
+
+# Real-time workspace creation
+def create_workspace(workspace_name):
+    try:
+        # Insert the new workspace into Supabase
+        supabase.table("workspaces").insert({"name": workspace_name}).execute()
+        st.success(f"Workspace '{workspace_name}' created.")
+    except Exception as e:
+        st.error(f"Failed to create workspace: {e}")
+
+
+# UI for workspace management
 st.header("\U0001F3C6 Workspace Management")
 
-# Allow users to create a new workspace or join an existing one
+# Input field for a new workspace name
 workspace_name = st.text_input("Enter a workspace name to join or create one:", placeholder="Workspace Name")
 col1, col2 = st.columns([3, 2])
 
-# Button to create a new workspace
+# Button to create workspace
 if col1.button("Create Workspace"):
-    if workspace_name and workspace_name not in st.session_state.workspaces:
-        st.session_state.workspaces.append(workspace_name)
-        st.success(f"Workspace '{workspace_name}' created successfully.")
+    if workspace_name:
+        create_workspace(workspace_name)
     else:
-        st.error("Workspace already exists or name is invalid.")
+        st.error("Please provide a valid name.")
 
-# Allow joining existing workspaces
-st.write("Available Workspaces:")
-for ws in st.session_state.workspaces:
-    if col2.button(f"Join Workspace: {ws}", key=ws):
-        st.session_state.current_workspace = ws
-        st.success(f"Joined workspace '{ws}'")
-        st.experimental_rerun()
+# Real-time update of the workspace list
+st.write("Current Active Workspaces:")
+workspace_list = fetch_workspaces()
 
-if "current_workspace" in st.session_state:
-    st.success(f"Welcome to the '{st.session_state.current_workspace}' workspace!")
+if workspace_list:
+    for ws in workspace_list:
+        if col2.button(f"Join Workspace: {ws}", key=ws):
+            st.session_state.current_workspace = ws
+            st.success(f"Joined '{ws}' workspace.")
+            st.experimental_rerun()
+else:
+    st.info("No active workspaces. Create one to start collaborating.")
 
 # Sidebar for AI Tools
 st.sidebar.header("\U0001F916 Gemini AI Assistant")
@@ -49,7 +72,6 @@ ai_tool = st.sidebar.selectbox("Choose an AI Tool:", [
     "Custom Prompt"
 ])
 
-# AI Tools Logic
 if ai_tool == "Brainstorm Ideas":
     prompt = st.sidebar.text_area("Describe what you need ideas for:", placeholder="E.g., Marketing strategies for product launch")
     if st.sidebar.button("Generate Ideas"):
@@ -60,33 +82,8 @@ if ai_tool == "Brainstorm Ideas":
         except Exception as e:
             st.sidebar.error(f"Error: {e}")
 
-elif ai_tool == "Summarize Text":
-    text_to_summarize = st.sidebar.text_area("Enter text to summarize:", placeholder="Paste a long document or text here")
-    if st.sidebar.button("Summarize"):
-        try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(f"Summarize this: {text_to_summarize}")
-            st.sidebar.write(response.text)
-        except Exception as e:
-            st.sidebar.error(f"Error: {e}")
-
-
-# Simulated Canvas Alternative for Basic Whiteboard-Like Functionality
+# Simulated Canvas Section Placeholder
 st.header("\U0001F5A8 Live Whiteboard Simulation")
-
-canvas_size = (400, 400)  # Whiteboard size in pixels
-if "canvas_image" not in st.session_state:
-    # Create a blank white canvas (numpy array with white background)
-    st.session_state.canvas_image = np.ones(canvas_size, dtype=np.uint8) * 255
-
-st.write("Click on 'Enable Drawing' to draw on the whiteboard.")
-drawing = st.checkbox("Enable Drawing Mode", value=False)
-
-if drawing:
-    st.write("Drawing mode is now active. Simulated whiteboard ready.")
-    st.image(st.session_state.canvas_image, use_column_width=True)
-else:
-    st.image(st.session_state.canvas_image, use_column_width=True)
-
+st.info("Note: Replace this with real-time canvas simulation using your system in production.")
 st.markdown("---")
 st.write("\U0001F4A1 Collaboration Platform ready.")
