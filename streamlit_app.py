@@ -1,6 +1,7 @@
 import streamlit as st
 from supabase import create_client, Client
 import google.generativeai as genai
+from streamlit_ace import st_ace
 
 # Streamlit app configuration
 st.set_page_config(page_title="CollabSphere", layout="wide")
@@ -35,7 +36,12 @@ def create_workspace(workspace_name):
     except Exception as e:
         st.error(f"Failed to create workspace: {e}")
 
-# Real-time file sharing (Simulated)
+# Real-time Task Updates
+def listen_to_tasks():
+    # Listen to tasks table for updates in real-time
+    supabase.table("tasks").on('INSERT', lambda payload: st.experimental_rerun()).subscribe()
+
+# Real-time file sharing simulation
 def file_upload():
     uploaded_file = st.file_uploader("Upload a file", type=["txt", "docx", "pdf", "jpg", "png"])
     if uploaded_file is not None:
@@ -65,9 +71,12 @@ if workspace_list:
         if col2.button(f"Join Workspace: {ws}", key=ws):
             st.session_state.current_workspace = ws
             st.success(f"Joined '{ws}' workspace.")
-            st.rerun()  # Use st.rerun() instead of st.experimental_rerun()
+            st.experimental_rerun()  # Re-render page to reflect changes
 else:
     st.info("No active workspaces. Create one to start collaborating.")
+
+# Real-time update using Supabase
+listen_to_tasks()
 
 # Sidebar for AI Tools
 st.sidebar.header("\U0001F916 Gemini AI Assistant")
@@ -100,7 +109,15 @@ file_upload()
 st.header("Task Management")
 task = st.text_input("Enter a task description:")
 if st.button("Add Task"):
-    st.success(f"Task '{task}' added to the workspace.")
-    
+    try:
+        supabase.table("tasks").insert({"task": task, "workspace": st.session_state.current_workspace}).execute()
+        st.success(f"Task '{task}' added to the workspace.")
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+# Real-time Collaboration (Live Editing)
+st.header("Collaborative Code Editing")
+st_ace(value="Welcome to the collaborative code editor!", language="python", theme="monokai")
+
 # Collaboration Platform ready
 st.write("\U0001F4A1 Collaboration Platform ready.")
