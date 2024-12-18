@@ -16,45 +16,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # Configure the Gemini AI key
 genai.configure(api_key=st.secrets["google"]["GOOGLE_API_KEY"])
 
-# Ensure the workspaces table has a primary key and exists
-def ensure_workspace_table():
-    try:
-        # Check if the 'workspaces' table exists in the 'information_schema.tables'
-        response = supabase.rpc('sql', {'query': """
-            SELECT * FROM information_schema.tables 
-            WHERE table_name = 'workspaces';
-        """}).execute()
-        
-        if not response.data:
-            # If table doesn't exist, create it
-            create_table_sql = """
-            CREATE TABLE public.workspaces (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL
-            );
-            """
-            supabase.rpc('sql', {'query': create_table_sql}).execute()
-            st.success("Created 'workspaces' table.")
-        else:
-            # If table exists, ensure primary key is set (if not)
-            response = supabase.rpc('sql', {'query': """
-                SELECT * FROM information_schema.columns
-                WHERE table_name = 'workspaces' AND column_name = 'id';
-            """}).execute()
-            
-            if not response.data:
-                alter_table_sql = """
-                ALTER TABLE public.workspaces ADD COLUMN id SERIAL PRIMARY KEY;
-                """
-                supabase.rpc('sql', {'query': alter_table_sql}).execute()
-                st.success("Added primary key 'id' to 'workspaces' table.")
-            
-    except Exception as e:
-        st.error(f"Error ensuring 'workspaces' table: {e}")
-
-# Call the function to ensure the table is set up correctly
-ensure_workspace_table()
-
 # Real-time fetch of active workspaces from Supabase
 def fetch_workspaces():
     try:
