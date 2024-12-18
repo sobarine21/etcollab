@@ -5,3 +5,4 @@ numpy
 pillow
 streamlit_ace
 asyncio
+supabase.realtime
