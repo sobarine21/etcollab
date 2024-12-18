@@ -39,8 +39,8 @@ def create_workspace(workspace_name):
 
 # Asynchronous listener function for Supabase real-time updates
 async def listen_to_tasks():
-    from supabase import SupabaseClient
-    async with SupabaseClient(SUPABASE_URL, SUPABASE_KEY) as client:
+    from supabase import create_client
+    async with create_client(SUPABASE_URL, SUPABASE_KEY) as client:
         channel = client.realtime.channel("tasks")
         await channel.subscribe()
 
