@@ -1,10 +1,5 @@
-streamlit 
-supabase 
-google-generativeai 
+streamlit
+supabase
+google-generativeai
 numpy
-pillow
-streamlit_ace
-asyncio
-supabase.realtime
-docx
-
+pandas
