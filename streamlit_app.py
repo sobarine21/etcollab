@@ -3,11 +3,6 @@ from supabase import create_client, Client
 import google.generativeai as genai
 import threading
 import asyncio
-from datetime import datetime
-import io
-from PIL import Image
-import docx
-import pdfplumber
 
 # Streamlit app configuration
 st.set_page_config(page_title="CollabSphere", layout="wide")
@@ -42,29 +37,6 @@ def create_workspace(workspace_name):
     except Exception as e:
         st.error(f"Failed to create workspace: {e}")
 
-# Real-time task fetch and display
-def fetch_tasks(workspace):
-    try:
-        # Query tasks for the selected workspace
-        response = supabase.table("tasks").select("*").eq("workspace", workspace).execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Failed to fetch tasks: {e}")
-        return []
-
-# Function to add a new task
-def add_task(task_description, workspace):
-    try:
-        task = {
-            "task": task_description,
-            "workspace": workspace,
-            "created_at": datetime.utcnow().isoformat()
-        }
-        supabase.table("tasks").insert(task).execute()
-        st.success(f"Task '{task_description}' added.")
-    except Exception as e:
-        st.error(f"Error adding task: {e}")
-
 # Asynchronous listener function for Supabase real-time updates
 async def listen_to_tasks():
     from supabase import create_client
@@ -73,12 +45,12 @@ async def listen_to_tasks():
     # Use the asynchronous RealtimeClient
     client = RealtimeClient(SUPABASE_URL, SUPABASE_KEY)
 
-    # Create the real-time subscription for tasks
+    # Create the real-time subscription
     channel = client.channel("tasks")
     await channel.subscribe()
 
     # Listen for real-time insertions (for example, new tasks)
-    await channel.on("INSERT", lambda payload: st.rerun())  # Re-run the app when a task is added
+    await channel.on("INSERT", lambda payload: st.rerun())  # Correct usage of st.rerun()
 
 # Function to start the listener in a separate thread
 def start_listener():
@@ -115,29 +87,6 @@ if workspace_list:
 else:
     st.info("No active workspaces. Create one to start collaborating.")
 
-# Real-time Task Management Example
-st.header("Task Management")
-
-if "current_workspace" in st.session_state:
-    workspace = st.session_state.current_workspace
-    tasks = fetch_tasks(workspace)
-    task_description = st.text_input(f"Enter a task description for '{workspace}':")
-    
-    if st.button("Add Task"):
-        if task_description:
-            add_task(task_description, workspace)
-        else:
-            st.error("Please provide a valid task description.")
-
-    # Display tasks for the current workspace
-    if tasks:
-        for task in tasks:
-            st.write(f"• {task['task']} (Added at {task['created_at']})")
-    else:
-        st.write("No tasks found for this workspace.")
-else:
-    st.info("Please join or create a workspace first.")
-
 # Real-time file sharing simulation
 def file_upload():
     uploaded_file = st.file_uploader("Upload a file", type=["txt", "docx", "pdf", "jpg", "png"])
@@ -145,21 +94,17 @@ def file_upload():
         st.write(f"File uploaded: {uploaded_file.name}")
         st.write(uploaded_file.getvalue())
 
-        # File preview logic based on file type
-        if uploaded_file.type.startswith("image/"):
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
-        elif uploaded_file.type == "application/pdf":
-            with pdfplumber.open(uploaded_file) as pdf:
-                first_page = pdf.pages[0]
-                text = first_page.extract_text()
-                st.write(text)
-        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            doc = docx.Document(io.BytesIO(uploaded_file.read()))
-            full_text = "\n".join([para.text for para in doc.paragraphs])
-            st.text_area("Document Content", full_text)
+# Real-time Task Management Example
+st.header("Task Management")
+task = st.text_input("Enter a task description:")
+if st.button("Add Task"):
+    try:
+        supabase.table("tasks").insert({"task": task, "workspace": st.session_state.current_workspace}).execute()
+        st.success(f"Task '{task}' added to the workspace.")
+    except Exception as e:
+        st.error(f"Error: {e}")
 
-# Real-time AI-enhanced Task Suggestions
+# Sidebar for AI Tools
 st.sidebar.header("\U0001F916 Gemini AI Assistant")
 ai_tool = st.sidebar.selectbox("Choose an AI Tool:", [
     "Brainstorm Ideas",
@@ -174,16 +119,6 @@ if ai_tool == "Brainstorm Ideas":
         try:
             model = genai.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(prompt)
-            st.sidebar.write(response.text)
-        except Exception as e:
-            st.sidebar.error(f"Error: {e}")
-
-if ai_tool == "Task Prioritization":
-    task_description = st.sidebar.text_area("Enter your task description here:", placeholder="E.g., Design marketing plan")
-    if st.sidebar.button("Prioritize Tasks"):
-        try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(f"Prioritize the following tasks: {task_description}")
             st.sidebar.write(response.text)
         except Exception as e:
             st.sidebar.error(f"Error: {e}")
