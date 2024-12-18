@@ -1,4 +1,5 @@
-streamlit
-supabase
-google.generativeai
-streamlit-canvas
+streamlit 
+supabase 
+google-generativeai 
+numpy
+pillow
