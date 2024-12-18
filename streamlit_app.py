@@ -26,7 +26,6 @@ def fetch_workspaces():
         st.error(f"Failed to fetch workspaces: {e}")
         return []
 
-
 # Real-time workspace creation
 def create_workspace(workspace_name):
     try:
@@ -36,6 +35,12 @@ def create_workspace(workspace_name):
     except Exception as e:
         st.error(f"Failed to create workspace: {e}")
 
+# Real-time file sharing (Simulated)
+def file_upload():
+    uploaded_file = st.file_uploader("Upload a file", type=["txt", "docx", "pdf", "jpg", "png"])
+    if uploaded_file is not None:
+        st.write(f"File uploaded: {uploaded_file.name}")
+        st.write(uploaded_file.getvalue())
 
 # UI for workspace management
 st.header("\U0001F3C6 Workspace Management")
@@ -87,4 +92,15 @@ if ai_tool == "Brainstorm Ideas":
 st.header("\U0001F5A8 Live Whiteboard Simulation")
 st.info("Note: Replace this with real-time canvas simulation using your system in production.")
 st.markdown("---")
+
+# Real-time file sharing simulation
+file_upload()
+
+# Task Management Example (Simulated)
+st.header("Task Management")
+task = st.text_input("Enter a task description:")
+if st.button("Add Task"):
+    st.success(f"Task '{task}' added to the workspace.")
+    
+# Collaboration Platform ready
 st.write("\U0001F4A1 Collaboration Platform ready.")
