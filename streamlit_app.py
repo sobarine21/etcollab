@@ -1,7 +1,6 @@
 import streamlit as st
+from streamlit_canvas import st_canvas
 import google.generativeai as genai
-from datetime import datetime
-import random
 
 # Configure the Gemini AI key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -10,21 +9,34 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 st.set_page_config(page_title="CollabSphere", layout="wide")
 st.title("\U0001F91D CollabSphere: Real-Time Collaboration Platform")
 
-# Anonymous User Login
-username = st.text_input("Enter a pseudonym to join anonymously:", placeholder="E.g., CreativeSoul123")
-if not username:
-    st.warning("Please enter a pseudonym to proceed.")
-    st.stop()
+# Workspace Management
+if "workspaces" not in st.session_state:
+    st.session_state.workspaces = []  # Store workspace names
 
-st.success(f"Welcome, {username}! Let's start collaborating!")
+st.header("\U0001F3C6 Workspace Management")
 
-# Workspace Selection
-workspace = st.text_input("Enter or create a workspace name:", placeholder="E.g., TeamAlpha")
-if not workspace:
-    st.warning("Please provide a workspace name.")
-    st.stop()
+# Allow users to create a new workspace or join an existing one
+workspace_name = st.text_input("Enter a workspace name to join or create one:", placeholder="Workspace Name")
+col1, col2 = st.columns([3, 2])
 
-st.info(f"You are in the workspace: {workspace}")
+# Button to create a new workspace
+if col1.button("Create Workspace"):
+    if workspace_name and workspace_name not in st.session_state.workspaces:
+        st.session_state.workspaces.append(workspace_name)
+        st.success(f"Workspace '{workspace_name}' created successfully.")
+    else:
+        st.error("Workspace already exists or name is invalid.")
+
+# Allow joining existing workspaces
+st.write("Available Workspaces:")
+for ws in st.session_state.workspaces:
+    if col2.button(f"Join Workspace: {ws}", key=ws):
+        st.session_state.current_workspace = ws
+        st.success(f"Joined workspace '{ws}'")
+        st.experimental_rerun()
+
+if "current_workspace" in st.session_state:
+    st.success(f"Welcome to the '{st.session_state.current_workspace}' workspace!")
 
 # Sidebar for AI Tools
 st.sidebar.header("\U0001F916 Gemini AI Assistant")
@@ -83,27 +95,20 @@ st.markdown("---")
 # Live Whiteboard Section
 st.subheader("\U0001F5A8 Live Whiteboard")
 
-# Use Session State to maintain shared canvas across users
-if "drawing_data" not in st.session_state:
-    st.session_state.drawing_data = []
-
-# Draw tools on live whiteboard
-st.write("Draw something in the canvas:")
-canvas = st.canvas(
+# Fix the canvas issue with `streamlit-canvas`
+canvas_width = 600
+canvas_height = 400
+canvas = st_canvas(
     key="shared_whiteboard",
-    width=500,
-    height=400,
+    width=canvas_width,
+    height=canvas_height,
     background_color="white",
     stroke_width=3,
     drawing_mode="freedraw",
     point_display_radius=3,
 )
 
-# Save drawing data in session state for real-time sharing
-if canvas:
-    st.session_state.drawing_data = canvas.get_drawings()
-
-# Task Management Section
+# Tasks Section
 st.header("\U00002705 Task Management")
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
