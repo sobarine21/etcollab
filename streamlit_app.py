@@ -45,7 +45,7 @@ async def listen_to_tasks():
         await channel.subscribe()
 
         # Listen for real-time insertions (for example, new tasks)
-        await channel.on("INSERT", lambda payload: st.experimental_rerun())
+        await channel.on("INSERT", lambda payload: st.rerun())  # Correct usage
 
 # Function to start the listener in a separate thread
 def start_listener():
@@ -78,7 +78,7 @@ if workspace_list:
         if col2.button(f"Join Workspace: {ws}", key=ws):
             st.session_state.current_workspace = ws
             st.success(f"Joined '{ws}' workspace.")
-            st.experimental_rerun()  # Re-render page to reflect changes
+            st.rerun()  # Re-render page to reflect changes
 else:
     st.info("No active workspaces. Create one to start collaborating.")
 
