@@ -1,7 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
 import google.generativeai as genai
-from streamlit_ace import st_ace
+import threading
+import asyncio
 
 # Streamlit app configuration
 st.set_page_config(page_title="CollabSphere", layout="wide")
@@ -36,17 +37,23 @@ def create_workspace(workspace_name):
     except Exception as e:
         st.error(f"Failed to create workspace: {e}")
 
-# Real-time Task Updates
-def listen_to_tasks():
-    # Listen to tasks table for updates in real-time
-    supabase.table("tasks").on('INSERT', lambda payload: st.experimental_rerun()).subscribe()
+# Asynchronous listener function for Supabase real-time updates
+async def listen_to_tasks():
+    from supabase import SupabaseClient
+    async with SupabaseClient(SUPABASE_URL, SUPABASE_KEY) as client:
+        channel = client.realtime.channel("tasks")
+        await channel.subscribe()
 
-# Real-time file sharing simulation
-def file_upload():
-    uploaded_file = st.file_uploader("Upload a file", type=["txt", "docx", "pdf", "jpg", "png"])
-    if uploaded_file is not None:
-        st.write(f"File uploaded: {uploaded_file.name}")
-        st.write(uploaded_file.getvalue())
+        # Listen for real-time insertions (for example, new tasks)
+        await channel.on("INSERT", lambda payload: st.experimental_rerun())
+
+# Function to start the listener in a separate thread
+def start_listener():
+    asyncio.run(listen_to_tasks())
+
+# Start the listener in a new thread
+listener_thread = threading.Thread(target=start_listener, daemon=True)
+listener_thread.start()
 
 # UI for workspace management
 st.header("\U0001F3C6 Workspace Management")
@@ -75,8 +82,22 @@ if workspace_list:
 else:
     st.info("No active workspaces. Create one to start collaborating.")
 
-# Real-time update using Supabase
-listen_to_tasks()
+# Real-time file sharing simulation
+def file_upload():
+    uploaded_file = st.file_uploader("Upload a file", type=["txt", "docx", "pdf", "jpg", "png"])
+    if uploaded_file is not None:
+        st.write(f"File uploaded: {uploaded_file.name}")
+        st.write(uploaded_file.getvalue())
+
+# Real-time Task Management Example
+st.header("Task Management")
+task = st.text_input("Enter a task description:")
+if st.button("Add Task"):
+    try:
+        supabase.table("tasks").insert({"task": task, "workspace": st.session_state.current_workspace}).execute()
+        st.success(f"Task '{task}' added to the workspace.")
+    except Exception as e:
+        st.error(f"Error: {e}")
 
 # Sidebar for AI Tools
 st.sidebar.header("\U0001F916 Gemini AI Assistant")
@@ -96,28 +117,6 @@ if ai_tool == "Brainstorm Ideas":
             st.sidebar.write(response.text)
         except Exception as e:
             st.sidebar.error(f"Error: {e}")
-
-# Simulated Canvas Section Placeholder
-st.header("\U0001F5A8 Live Whiteboard Simulation")
-st.info("Note: Replace this with real-time canvas simulation using your system in production.")
-st.markdown("---")
-
-# Real-time file sharing simulation
-file_upload()
-
-# Task Management Example (Simulated)
-st.header("Task Management")
-task = st.text_input("Enter a task description:")
-if st.button("Add Task"):
-    try:
-        supabase.table("tasks").insert({"task": task, "workspace": st.session_state.current_workspace}).execute()
-        st.success(f"Task '{task}' added to the workspace.")
-    except Exception as e:
-        st.error(f"Error: {e}")
-
-# Real-time Collaboration (Live Editing)
-st.header("Collaborative Code Editing")
-st_ace(value="Welcome to the collaborative code editor!", language="python", theme="monokai")
 
 # Collaboration Platform ready
 st.write("\U0001F4A1 Collaboration Platform ready.")
