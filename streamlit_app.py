@@ -3,6 +3,7 @@ from PIL import Image, ImageDraw
 import google.generativeai as genai
 import numpy as np
 
+
 # Configure the Gemini AI key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
@@ -69,29 +70,23 @@ elif ai_tool == "Summarize Text":
         except Exception as e:
             st.sidebar.error(f"Error: {e}")
 
-# Drawing Canvas Simulation
+
+# Simulated Canvas Alternative for Basic Whiteboard-Like Functionality
 st.header("\U0001F5A8 Live Whiteboard Simulation")
 
-# Create an empty white canvas (simulate with numpy arrays)
-canvas_size = (400, 400)
-if "drawing_image" not in st.session_state:
-    img = np.ones(canvas_size) * 255  # Initialize white canvas
-else:
-    img = st.session_state.drawing_image
+canvas_size = (400, 400)  # Whiteboard size in pixels
+if "canvas_image" not in st.session_state:
+    # Create a blank white canvas (numpy array with white background)
+    st.session_state.canvas_image = np.ones(canvas_size, dtype=np.uint8) * 255
 
-# Convert numpy array to image
-canvas_image = Image.fromarray(img.astype(np.uint8), mode='L')
-
-# Allow drawing (basic simulated drawing using mouse clicks)
+st.write("Click on 'Enable Drawing' to draw on the whiteboard.")
 drawing = st.checkbox("Enable Drawing Mode", value=False)
 
 if drawing:
-    st.write("You can draw with simulated clicks here.")
+    st.write("Drawing mode is now active. Simulated whiteboard ready.")
+    st.image(st.session_state.canvas_image, use_column_width=True)
 else:
-    st.image(canvas_image, caption="Your Whiteboard Simulation")
-
-# Save simulated changes (this is a placeholder)
-st.session_state.drawing_image = img  # Save canvas changes back to session state
+    st.image(st.session_state.canvas_image, use_column_width=True)
 
 st.markdown("---")
 st.write("\U0001F4A1 Collaboration Platform ready.")
