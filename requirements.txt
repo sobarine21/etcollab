@@ -1,2 +1,8 @@
 streamlit
-google-generativeai
+firebase-admin 
+pandas
+numpy 
+matplotlib 
+scikit-learn 
+openai 
+requests
