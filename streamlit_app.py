@@ -4,9 +4,13 @@ from firebase_admin import credentials, firestore, auth
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import json
+
+# Load Firebase credentials from Streamlit secrets
+firebase_credentials = json.loads(st.secrets["firebase_credentials"])
 
 # Initialize Firebase
-cred = credentials.Certificate("/credentials.json")
+cred = credentials.Certificate(firebase_credentials)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
