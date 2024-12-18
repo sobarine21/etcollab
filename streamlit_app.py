@@ -1,6 +1,7 @@
 import streamlit as st
-from streamlit_canvas import st_canvas
+from PIL import Image, ImageDraw
 import google.generativeai as genai
+import numpy as np
 
 # Configure the Gemini AI key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -68,65 +69,29 @@ elif ai_tool == "Summarize Text":
         except Exception as e:
             st.sidebar.error(f"Error: {e}")
 
-# Main Collaboration Workspace
-st.header("\U0001F4C2 Collaboration Board")
+# Drawing Canvas Simulation
+st.header("\U0001F5A8 Live Whiteboard Simulation")
 
-# Shared Chat Section
-st.subheader("\U0001F4AC Live Chat")
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Create an empty white canvas (simulate with numpy arrays)
+canvas_size = (400, 400)
+if "drawing_image" not in st.session_state:
+    img = np.ones(canvas_size) * 255  # Initialize white canvas
+else:
+    img = st.session_state.drawing_image
 
-def send_message():
-    """Appends a new message to the session state."""
-    user_message = st.session_state.chat_input
-    if user_message:
-        st.session_state.messages.append(f"{username}: {user_message}")
-        st.session_state.chat_input = ""
+# Convert numpy array to image
+canvas_image = Image.fromarray(img.astype(np.uint8), mode='L')
 
-# Display the chat messages in real-time
-for msg in st.session_state.messages:
-    st.write(msg)
+# Allow drawing (basic simulated drawing using mouse clicks)
+drawing = st.checkbox("Enable Drawing Mode", value=False)
 
-# Input for sending new messages
-st.text_input("Type your message:", key="chat_input", on_change=send_message)
+if drawing:
+    st.write("You can draw with simulated clicks here.")
+else:
+    st.image(canvas_image, caption="Your Whiteboard Simulation")
+
+# Save simulated changes (this is a placeholder)
+st.session_state.drawing_image = img  # Save canvas changes back to session state
 
 st.markdown("---")
-
-# Live Whiteboard Section
-st.subheader("\U0001F5A8 Live Whiteboard")
-
-# Fix the canvas issue with `streamlit-canvas`
-canvas_width = 600
-canvas_height = 400
-canvas = st_canvas(
-    key="shared_whiteboard",
-    width=canvas_width,
-    height=canvas_height,
-    background_color="white",
-    stroke_width=3,
-    drawing_mode="freedraw",
-    point_display_radius=3,
-)
-
-# Tasks Section
-st.header("\U00002705 Task Management")
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-task_input = st.text_input("Add a new task:", placeholder="E.g., Complete project proposal")
-if st.button("Add Task"):
-    st.session_state.tasks.append({"task": task_input, "status": "Pending", "assigned": username})
-    st.success("Task added!")
-
-if st.session_state.tasks:
-    for idx, task in enumerate(st.session_state.tasks):
-        col1, col2, col3 = st.columns([6, 2, 2])
-        col1.write(f"{task['task']} (Assigned: {task['assigned']})")
-        col2.write(task['status'])
-        if col3.button("Mark Complete", key=f"complete_{idx}"):
-            task['status'] = "Completed"
-            st.experimental_rerun()
-
-# Footer
-st.write("\n---\n")
-st.write("\U0001F4A1 Powered by Gemini AI and built with Streamlit.")
+st.write("\U0001F4A1 Collaboration Platform ready.")
