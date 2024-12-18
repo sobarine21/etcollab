@@ -7,4 +7,4 @@ streamlit_ace
 asyncio
 supabase.realtime
 docx
-exceptions
+
