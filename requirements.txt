@@ -1,5 +1,2 @@
 streamlit
-supabase
 google-generativeai
-numpy
-pandas
