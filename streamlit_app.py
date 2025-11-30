@@ -1,95 +1,94 @@
+# streamlit_app.py
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore, auth
-import pandas as pd
-import numpy as np
-from datetime import datetime
+import requests
 import json
 
-# Load Firebase credentials from Streamlit secrets
-# Ensure that the firebase_credentials key is added in secrets.toml or Streamlit Cloud secrets
-try:
-    firebase_credentials = json.loads(st.secrets["firebase_credentials"])
+st.set_page_config(page_title="Internal DB Query", layout="centered")
 
-    # Initialize Firebase using the credentials
-    cred = credentials.Certificate(firebase_credentials)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
+st.title("🔍 Supabase Internal DB Query")
 
-except KeyError:
-    st.error("Firebase credentials not found in Streamlit secrets. Please add them to the secrets.toml or Streamlit Cloud secrets.")
-    st.stop()
+st.markdown(
+    "Run SQL against your internal DB function "
+    "(`/functions/v1/internal-db-query`)."
+)
 
-st.title("CollabSphere")
+# ---- Configuration ----
+col1, col2 = st.columns(2)
+with col1:
+    base_url = st.text_input(
+        "Supabase project URL (without trailing slash)",
+        value="https://zmxnoeekcvtptybentct.supabase.co",
+        help="Same base URL that appears in your curl command."
+    )
+with col2:
+    fn_path = st.text_input(
+        "Function path",
+        value="/functions/v1/internal-db-query",
+        help="Path after the base URL."
+    )
 
-# Authentication
-def login():
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        try:
-            user = auth.get_user_by_email(email)
-            st.success(f"Logged in as {user.email}")
-        except:
-            st.error("Invalid credentials")
+api_key = st.text_input(
+    "x-api-key",
+    type="password",
+    help="The API key used in the curl example (not your anon/public key)."
+)
 
-def register():
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    if st.button("Register"):
-        try:
-            user = auth.create_user(
-                email=email,
-                password=password
-            )
-            st.success(f"Registered as {user.email}")
-        except:
-            st.error("Registration failed")
+database_id = st.text_input(
+    "database_id",
+    placeholder="your-database-id"
+)
 
-# Sidebar menu
-st.sidebar.title("Menu")
-page = st.sidebar.selectbox("Choose a page", ["Login", "Register", "Dashboard"])
+default_query = "SELECT * FROM users LIMIT 10"
+query_text = st.text_area(
+    "SQL query_text",
+    value=default_query,
+    height=150
+)
 
-# Page navigation
-if page == "Login":
-    login()
-elif page == "Register":
-    register()
-elif page == "Dashboard":
-    st.write("Welcome to the Dashboard")
+run_btn = st.button("▶️ Run Query")
 
-    # Real-time Collaboration
-    st.subheader("Real-time Collaboration")
-    doc_ref = db.collection("collabs").document("example")
-    doc = doc_ref.get()
-    if doc.exists:
-        data = doc.to_dict()
-        st.write(data)
+# ---- Action ----
+if run_btn:
+    if not (base_url and fn_path and api_key and database_id and query_text.strip()):
+        st.error("Please fill in all fields before running the query.")
     else:
-        st.write("No collaboration data available.")
+        url = f"{base_url.rstrip('/')}{fn_path}"
 
-    # Task Management
-    st.subheader("Task Management")
-    tasks = ["Task 1", "Task 2", "Task 3"]
-    for task in tasks:
-        st.checkbox(task)
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+        }
 
-    # Knowledge Sharing
-    st.subheader("Knowledge Sharing")
-    if st.button("Share Knowledge"):
-        st.write("Sharing knowledge...")
+        payload = {
+            "database_id": database_id,
+            "query_text": query_text,
+        }
 
-    # AI-enhanced Productivity Tools
-    st.subheader("AI-enhanced Productivity Tools")
-    if st.button("Enhance Productivity"):
-        st.write("Enhancing productivity with AI...")
+        st.info(f"Sending request to: `{url}`")
+        with st.spinner("Executing query..."):
+            try:
+                resp = requests.post(url, headers=headers, json=payload, timeout=60)
+            except Exception as e:
+                st.error(f"Request failed: {e}")
+            else:
+                st.code(f"Status: {resp.status_code}", language="bash")
 
-    # Gamification
-    st.subheader("Gamification")
-    points = 100
-    st.write(f"You have {points} points.")
+                # Try to parse JSON; fall back to raw text
+                try:
+                    data = resp.json()
+                except json.JSONDecodeError:
+                    st.subheader("Raw response")
+                    st.text(resp.text)
+                else:
+                    st.subheader("JSON response")
+                    st.json(data)
 
-    # Integrations
-    st.subheader("Integrations")
-    if st.button("Integrate"):
-        st.write("Integrating with external services...")
+                    # If the response looks like tabular rows, display as table
+                    if isinstance(data, dict):
+                        rows = data.get("rows") or data.get("data")
+                    else:
+                        rows = data
+
+                    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+                        st.subheader("Table view")
+                        st.dataframe(rows)
