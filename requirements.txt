@@ -1,8 +1,2 @@
-streamlit
-firebase-admin 
-pandas
-numpy 
-matplotlib 
-scikit-learn 
-openai 
+streamlit 
 requests
